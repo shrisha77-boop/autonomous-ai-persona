@@ -4,8 +4,11 @@ from fastapi import FastAPI
 
 from app.database.database import Base, engine
 from app.models.agent import Agent  # noqa: F401
+from app.models.post import Post
 
 from app.api.v1.routes.agent import router as agent_router
+
+from app.api.v1.routes.feed import router as feed_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,6 +28,7 @@ app = FastAPI(
 )
 
 app.include_router(agent_router)
+app.include_router(feed_router)
 
 @app.get("/")
 async def root():
