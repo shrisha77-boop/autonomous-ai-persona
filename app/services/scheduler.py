@@ -2,7 +2,7 @@ import asyncio
 
 from app.database.database import AsyncSessionLocal
 from app.services.agent_engine import AgentEngine
-from app.services.llm.provider import MockLLMProvider
+from app.services.llm.ollama_provider import OllamaProvider
 from app.services.persona_writer import PersonaWriter
 from app.services.post_publisher import PostPublisher
 
@@ -45,7 +45,7 @@ async def run_agent_cycle(
         )
 
         writer = PersonaWriter(
-            MockLLMProvider()
+            OllamaProvider()
         )
 
         text = await writer.generate_post(
