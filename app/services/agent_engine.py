@@ -2,7 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.editorial_engine import EditorialEngine
 from app.services.memory import MemoryService
-from app.services.sources.hackernews import discover_hackernews_topics
+from app.services.topic_adapter import adapt_topic
+from services.topic_discovery.aggregator import fetch_all_topics
 
 
 class AgentEngine:
@@ -17,7 +18,13 @@ class AgentEngine:
         agent_id: str,
         persona_domain: str,
     ):
-        topics = discover_hackernews_topics(limit=20)
+        raw_topics = await fetch_all_topics()
+
+        topics = [
+            adapt_topic(topic)
+            for topic in raw_topics
+            if topic.get("selected", True)
+        ]
 
         decisions = []
 
