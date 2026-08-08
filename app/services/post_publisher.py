@@ -26,7 +26,7 @@ class PostPublisher:
             f"{decision.reason}"
         )
 
-        post = Post(
+        post = Post( 
             agent_id=agent_id,
             topic_title=topic.title,
             text=text,

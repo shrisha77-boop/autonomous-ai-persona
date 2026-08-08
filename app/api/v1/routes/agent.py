@@ -27,6 +27,7 @@ async def initialize_agent(
     await db.commit()
     await db.refresh(agent)
 
+
     start_agent(
         agent_id=agent.id,
         persona_name=agent.name,

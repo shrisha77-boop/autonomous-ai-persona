@@ -9,7 +9,11 @@ TOP_STORIES_URL = (
     "https://hacker-news.firebaseio.com/v0/topstories.json"
 )
 
-ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/{}.json"
+ITEM_URL = (
+    "https://hacker-news.firebaseio.com/v0/item/{}.json"
+)
+
+REQUEST_TIMEOUT = 5
 
 
 def discover_hackernews_topics(
@@ -17,19 +21,30 @@ def discover_hackernews_topics(
 ) -> list[TopicCandidate]:
     candidates: list[TopicCandidate] = []
 
-    response = requests.get(
-        TOP_STORIES_URL,
-        timeout=10,
-    )
-    response.raise_for_status()
+    # Fetch the list of top stories.
+    try:
+        response = requests.get(
+            TOP_STORIES_URL,
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
 
-    story_ids = response.json()[:limit]
+        story_ids = response.json()[:limit]
 
+    except requests.RequestException as exc:
+        print(
+            f"[SignalForge] Failed to fetch Hacker News top stories: "
+            f"{exc}",
+            flush=True,
+        )
+        return candidates
+
+    # Fetch each individual story.
     for story_id in story_ids:
         try:
             story_response = requests.get(
                 ITEM_URL.format(story_id),
-                timeout=10,
+                timeout=REQUEST_TIMEOUT,
             )
             story_response.raise_for_status()
 
@@ -38,11 +53,16 @@ def discover_hackernews_topics(
             if not story:
                 continue
 
+            # Ignore deleted/dead stories.
+            if story.get("deleted") or story.get("dead"):
+                continue
+
             title = story.get("title", "").strip()
-            url = story.get("url", "").strip()
 
             if not title:
                 continue
+
+            url = story.get("url", "").strip()
 
             published_at = None
 
@@ -64,8 +84,16 @@ def discover_hackernews_topics(
 
         except requests.RequestException as exc:
             print(
-                f"Failed to fetch Hacker News story {story_id}: {exc}",
+                f"[SignalForge] Skipping Hacker News story "
+                f"{story_id}: {exc}",
                 flush=True,
             )
+            continue
+
+    print(
+        f"[SignalForge] Hacker News discovery found "
+        f"{len(candidates)} topics.",
+        flush=True,
+    )
 
     return candidates

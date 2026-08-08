@@ -7,10 +7,7 @@ from app.services.persona_writer import PersonaWriter
 from app.services.post_publisher import PostPublisher
 
 
-# Development interval.
-# Later we'll make this configurable through .env.
 PUBLISH_INTERVAL_SECONDS = 60
-
 
 _active_tasks: dict[str, asyncio.Task] = {}
 
@@ -20,6 +17,11 @@ async def run_agent_cycle(
     persona_name: str,
     persona_domain: str,
 ):
+    print(
+        f"[SignalForge] Starting cycle for {persona_name}",
+        flush=True,
+    )
+
     async with AsyncSessionLocal() as db:
         engine = AgentEngine(db)
 
@@ -30,7 +32,7 @@ async def run_agent_cycle(
 
         if not decisions:
             print(
-                f"[SignalForge] No suitable topic for {agent_name}",
+                f"[SignalForge] No suitable topic for {persona_name}",
                 flush=True,
             )
             return
@@ -48,10 +50,20 @@ async def run_agent_cycle(
             OllamaProvider()
         )
 
+        print(
+            "[SignalForge] Generating post with Ollama...",
+            flush=True,
+        )
+
         text = await writer.generate_post(
             topic=topic,
             persona_name=persona_name,
             persona_domain=persona_domain,
+        )
+
+        print(
+            "[SignalForge] LLM generation complete.",
+            flush=True,
         )
 
         publisher = PostPublisher(db)
@@ -75,8 +87,7 @@ async def agent_loop(
     persona_domain: str,
 ):
     print(
-        f"[SignalForge] Autonomous loop started for "
-        f"{persona_name}",
+        f"[SignalForge] Autonomous loop started for {persona_name}",
         flush=True,
     )
 
@@ -102,6 +113,12 @@ async def agent_loop(
                 flush=True,
             )
 
+        print(
+            f"[SignalForge] Sleeping for "
+            f"{PUBLISH_INTERVAL_SECONDS} seconds...",
+            flush=True,
+        )
+
         await asyncio.sleep(PUBLISH_INTERVAL_SECONDS)
 
 
@@ -113,7 +130,17 @@ def start_agent(
     existing_task = _active_tasks.get(agent_id)
 
     if existing_task and not existing_task.done():
+        print(
+            f"[SignalForge] Agent {agent_id} is already running.",
+            flush=True,
+        )
         return
+
+    print(
+        f"[SignalForge] Starting autonomous task for "
+        f"{persona_name} ({agent_id})",
+        flush=True,
+    )
 
     task = asyncio.create_task(
         agent_loop(
@@ -124,3 +151,8 @@ def start_agent(
     )
 
     _active_tasks[agent_id] = task
+
+    print(
+        f"[SignalForge] Autonomous task created for {persona_name}",
+        flush=True,
+    )
