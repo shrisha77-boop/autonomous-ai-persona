@@ -15,10 +15,10 @@ class MemoryService:
         title: str,
     ) -> bool:
         result = await self.db.execute(
-            select(Post).where(
+            select(Post.id).where(
                 Post.agent_id == agent_id,
                 Post.topic_title == title,
-            )
+            ).limit(1)
         )
 
-        return result.scalar_one_or_none() is not None
+        return result.scalar_one_or_none() is not None

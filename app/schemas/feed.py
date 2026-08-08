@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
 
 
 class PostResponse(BaseModel):
@@ -12,6 +12,12 @@ class PostResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @field_serializer("createdAt")
+    def serialize_created_at(self, dt: datetime, _info) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+
 
 class FeedResponse(BaseModel):
-    posts: list[PostResponse]
+    posts: list[PostResponse]

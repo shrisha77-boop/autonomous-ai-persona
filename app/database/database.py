@@ -1,3 +1,4 @@
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -5,12 +6,19 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
-DATABASE_URL = "sqlite+aiosqlite:///./signalforge.db"
+from app.core.config import settings
 
 engine = create_async_engine(
-    DATABASE_URL,
+    settings.DATABASE_URL,
     echo=False,
 )
+
+@event.listens_for(engine.sync_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.close()
 
 AsyncSessionLocal = async_sessionmaker(
     engine,
@@ -25,4 +33,4 @@ class Base(DeclarativeBase):
 
 async def get_db():
     async with AsyncSessionLocal() as session:
-        yield session
+        yield session

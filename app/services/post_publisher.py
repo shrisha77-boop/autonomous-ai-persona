@@ -21,21 +21,21 @@ class PostPublisher:
     ) -> Post:
 
         rationale = (
-            f"Selected because the topic scored "
-            f"{decision.score}/100 in the editorial evaluation. "
-            f"{decision.reason}"
+            f"Selected candidate topic '{topic.title}' with editorial score "
+            f"{decision.score}/100. "
+            f"Current relevance: {decision.reason}. "
+            f"Selected over competing candidate topics in this cycle due to highest domain alignment "
+            f"and source credibility ({topic.source_name})."
         )
 
-        post = Post( 
+        sources = [topic.source_url] if topic.source_url else []
+
+        post = Post(
             agent_id=agent_id,
             topic_title=topic.title,
             text=text,
             rationale=rationale,
-            sources=json.dumps(
-                [topic.source_url]
-                if topic.source_url
-                else []
-            ),
+            sources=json.dumps(sources),
         )
 
         self.db.add(post)
@@ -43,4 +43,4 @@ class PostPublisher:
         await self.db.commit()
         await self.db.refresh(post)
 
-        return post
+        return post
