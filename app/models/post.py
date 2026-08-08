@@ -23,6 +23,12 @@ class Post(Base):
         index=True,
     )
 
+    topic_title: Mapped[str] = mapped_column(
+    String(500),
+    nullable=False,
+    index=True,
+   )
+
     text: Mapped[str] = mapped_column(
         Text,
         nullable=False,

@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.database import get_db
 from app.models.agent import Agent
 from app.schemas.agent import AgentInitRequest, AgentInitResponse
+from app.services.scheduler import start_agent
+
 
 router = APIRouter(
     prefix="/api/agent",
@@ -24,6 +26,12 @@ async def initialize_agent(
     db.add(agent)
     await db.commit()
     await db.refresh(agent)
+
+    start_agent(
+        agent_id=agent.id,
+        persona_name=agent.name,
+        persona_domain=agent.domain,
+    )
 
     return AgentInitResponse(
         agentId=agent.id,

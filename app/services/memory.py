@@ -17,7 +17,7 @@ class MemoryService:
         result = await self.db.execute(
             select(Post).where(
                 Post.agent_id == agent_id,
-                Post.text.ilike(f"%{title}%"),
+                Post.topic_title == title,
             )
         )
 

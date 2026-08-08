@@ -28,6 +28,7 @@ class PostPublisher:
 
         post = Post(
             agent_id=agent_id,
+            topic_title=topic.title,
             text=text,
             rationale=rationale,
             sources=json.dumps(
