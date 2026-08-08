@@ -1,3 +1,6 @@
 .venv/
 __pycache__/
+*.pyc
+signalforge.db
+.env
 *.py[cod]
