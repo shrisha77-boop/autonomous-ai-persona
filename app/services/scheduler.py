@@ -1,13 +1,12 @@
 import asyncio
 
+from app.core.config import settings
 from app.database.database import AsyncSessionLocal
 from app.services.agent_engine import AgentEngine
 from app.services.llm.ollama_provider import OllamaProvider
+from app.services.llm.provider import MockLLMProvider
 from app.services.persona_writer import PersonaWriter
 from app.services.post_publisher import PostPublisher
-
-
-PUBLISH_INTERVAL_SECONDS = 60
 
 _active_tasks: dict[str, asyncio.Task] = {}
 
@@ -46,25 +45,32 @@ async def run_agent_cycle(
             flush=True,
         )
 
-        writer = PersonaWriter(
-            OllamaProvider()
-        )
-
-        print(
-            "[SignalForge] Generating post with Ollama...",
-            flush=True,
-        )
-
-        text = await writer.generate_post(
-            topic=topic,
-            persona_name=persona_name,
-            persona_domain=persona_domain,
-        )
-
-        print(
-            "[SignalForge] LLM generation complete.",
-            flush=True,
-        )
+        try:
+            print(
+                "[SignalForge] Generating post with Ollama...",
+                flush=True,
+            )
+            writer = PersonaWriter(OllamaProvider())
+            text = await writer.generate_post(
+                topic=topic,
+                persona_name=persona_name,
+                persona_domain=persona_domain,
+            )
+            print(
+                "[SignalForge] LLM generation complete.",
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f"[SignalForge] Ollama generation unavailable ({exc}). Using fallback provider...",
+                flush=True,
+            )
+            writer = PersonaWriter(MockLLMProvider())
+            text = await writer.generate_post(
+                topic=topic,
+                persona_name=persona_name,
+                persona_domain=persona_domain,
+            )
 
         publisher = PostPublisher(db)
 
@@ -85,9 +91,11 @@ async def agent_loop(
     agent_id: str,
     persona_name: str,
     persona_domain: str,
+    interval_seconds: int | None = None,
 ):
+    interval = interval_seconds or settings.PUBLISH_INTERVAL_SECONDS
     print(
-        f"[SignalForge] Autonomous loop started for {persona_name}",
+        f"[SignalForge] Autonomous loop started for {persona_name} (interval: {interval}s)",
         flush=True,
     )
 
@@ -101,8 +109,7 @@ async def agent_loop(
 
         except asyncio.CancelledError:
             print(
-                f"[SignalForge] Autonomous loop stopped for "
-                f"{persona_name}",
+                f"[SignalForge] Autonomous loop stopped for {persona_name}",
                 flush=True,
             )
             raise
@@ -114,18 +121,18 @@ async def agent_loop(
             )
 
         print(
-            f"[SignalForge] Sleeping for "
-            f"{PUBLISH_INTERVAL_SECONDS} seconds...",
+            f"[SignalForge] Sleeping for {interval} seconds...",
             flush=True,
         )
 
-        await asyncio.sleep(PUBLISH_INTERVAL_SECONDS)
+        await asyncio.sleep(interval)
 
 
 def start_agent(
     agent_id: str,
     persona_name: str,
     persona_domain: str,
+    interval_seconds: int | None = None,
 ):
     existing_task = _active_tasks.get(agent_id)
 
@@ -137,8 +144,7 @@ def start_agent(
         return
 
     print(
-        f"[SignalForge] Starting autonomous task for "
-        f"{persona_name} ({agent_id})",
+        f"[SignalForge] Starting autonomous task for {persona_name} ({agent_id})",
         flush=True,
     )
 
@@ -147,6 +153,7 @@ def start_agent(
             agent_id=agent_id,
             persona_name=persona_name,
             persona_domain=persona_domain,
+            interval_seconds=interval_seconds,
         )
     )
 
@@ -156,3 +163,10 @@ def start_agent(
         f"[SignalForge] Autonomous task created for {persona_name}",
         flush=True,
     )
+
+
+def stop_agent(agent_id: str):
+    task = _active_tasks.pop(agent_id, None)
+    if task and not task.done():
+        task.cancel()
+        print(f"[SignalForge] Cancelled autonomous task for agent {agent_id}", flush=True)
